@@ -1,10 +1,19 @@
 import unittest
-from htmlnode import HTMLNode, LeafNode
+from htmlnode import HTMLNode, LeafNode, ParentNode
 
 props = {
     "href": "https://kelbya.dev",
     "target": "_blank"
 }
+multiple_children = [
+    LeafNode("b", "Bold Text"), 
+    LeafNode("i", "Italic Text"), 
+    LeafNode("n", "Normal Text"), 
+    LeafNode("n", "Normal Text"), 
+]
+one_child = [
+    LeafNode("b", "Bold Text"), 
+]
 
 class TestHTMLNode(unittest.TestCase):
     def test_init_a_tag(self):
@@ -72,6 +81,164 @@ class TestHTMLNode(unittest.TestCase):
 
         expected = f"HTMLNode({tag}, {value}, None, None)" 
         recieved = pNode.__repr__()
+        self.assertEqual(expected, recieved)
+
+""" 
+ParentNode has a "contract" where a child MUST be specified. 
+If not, then that contract will break once to_html is called. 
+"""
+class TestParentNode(unittest.TestCase):
+    def test_init_no_props(self):
+        tag = "p"
+        pNode = ParentNode(tag, multiple_children, None) 
+
+        self.assertEqual(pNode.tag, tag)
+        self.assertEqual(pNode.children, multiple_children)
+        self.assertEqual(pNode.props, None)
+
+    def test_init_with_props(self):
+        tag = "a"
+        children = [
+            LeafNode("b", "Bold Text"), 
+            LeafNode("i", "Italic Text"), 
+            LeafNode("n", "Normal Text"), 
+            LeafNode("n", "Normal Text"), 
+        ]
+        props = {
+            "target": "_blank",
+            "href": "https://kelbya.dev",
+        }
+        aNode = ParentNode(tag, children, props) 
+
+        self.assertEqual(aNode.tag, tag)
+        self.assertEqual(aNode.children, children)
+        self.assertEqual(aNode.props, props)
+
+    def test_init_no_children(self):
+        tag = "a"
+        props = {
+            "target": "_blank",
+            "href": "https://kelbya.dev",
+        }
+        aNode = ParentNode(tag, None, props) 
+
+        self.assertEqual(aNode.tag, tag)
+        self.assertEqual(aNode.children, None)
+        self.assertEqual(aNode.props, props)
+
+    def test_init_no_tag(self):
+        props = {
+            "target": "_blank",
+            "href": "https://kelbya.dev",
+        }
+        children = [
+            LeafNode("b", "Bold Text"), 
+            LeafNode("i", "Italic Text"), 
+            LeafNode("n", "Normal Text"), 
+            LeafNode("n", "Normal Text"), 
+        ]
+        aNode = ParentNode(None, children, props) 
+
+        self.assertEqual(aNode.tag, None)
+        self.assertEqual(aNode.children, children)
+        self.assertEqual(aNode.props, props)
+
+    def test_to_html_one_child(self):
+        tag = "a"
+        children = [
+            LeafNode("b", "Bold Text"), 
+        ]
+        props = {
+            "target": "_blank",
+            "href": "https://kelbya.dev",
+        }
+        aNode = ParentNode(tag, children, props) 
+        
+        expected = "<a target=\"_blank\" href=\"https://kelbya.dev\"><b>Bold Text</b></a>"
+        recieved = aNode.to_html()
+
+        self.assertEqual(expected, recieved)
+
+    def test_to_html_multiple_children(self):
+        tag = "a"
+        props = {
+            "target": "_blank",
+            "href": "https://kelbya.dev",
+        }
+        children = [
+            LeafNode("b", "Bold Text"), 
+            LeafNode("i", "Italic Text"), 
+            LeafNode("p", "Normal Text"), 
+        ]
+        aNode = ParentNode(tag, children, props) 
+        
+        expected = "<a target=\"_blank\" href=\"https://kelbya.dev\"><b>Bold Text</b><i>Italic Text</i><p>Normal Text</p></a>"
+        recieved = aNode.to_html()
+
+        self.assertEqual(expected, recieved)
+
+    def test_to_html_child_is_valid_parent(self):
+        tag = "div"
+        props = {
+            "target": "_blank",
+            "href": "https://kelbya.dev",
+        }
+        children = [
+            ParentNode("a", [LeafNode("p", "Regular Text")], props), 
+        ]
+        divNode = ParentNode(tag, children, None) 
+
+        expected = "<div><a target=\"_blank\" href=\"https://kelbya.dev\"><p>Regular Text</p></a></div>"
+        recieved = divNode.to_html()
+
+        self.assertEqual(expected, recieved)
+
+    def test_to_html_child_is_invalid_parent(self):
+        tag = "div"
+        props = {
+            "target": "_blank",
+            "href": "https://kelbya.dev",
+        }
+        children = [
+            ParentNode("div", None, props), 
+        ]
+        divNode = ParentNode(tag, children, None) 
+
+        with self.assertRaises(ValueError) as err:
+            divNode.to_html()
+
+        self.assertEqual(type(err.exception), ValueError)
+
+    def test_repr_all_fields_valid(self):
+        tag = "a"
+        props = {
+            "target": "_blank",
+            "href": "https://kelbya.dev",
+        }
+        children = [
+            LeafNode(None, "Im a leaf!"), 
+        ]
+        aNode = ParentNode(tag, children, props) 
+
+        expected = f"ParentNode({tag}, {children}, {props})"
+        recieved = aNode.__repr__()
+
+        self.assertEqual(expected, recieved)
+
+    def test_repr_some_fields_valid(self):
+        tag = "div"
+        props = {
+            "target": "_blank",
+            "href": "https://kelbya.dev",
+        }
+        children = [
+            ParentNode("a", [LeafNode("p", "Regular Text")], props), 
+        ]
+        divNode = ParentNode(tag, children, None) 
+
+        expected = f"ParentNode({tag}, {children}, None)"
+        recieved = divNode.__repr__()
+
         self.assertEqual(expected, recieved)
 
 class TestLeafNode(unittest.TestCase):
